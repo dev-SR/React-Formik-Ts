@@ -7,12 +7,14 @@
       "serve": "vite preview"
    },
    "dependencies": {
+      "@reduxjs/toolkit": "^1.5.1",
       "@types/prismjs": "^1.16.5",
       "@types/react-router-dom": "^5.1.7",
       "framer-motion": "^4.1.2",
       "prismjs": "^1.23.0",
       "react": "^17.0.0",
       "react-dom": "^17.0.0",
+      "react-redux": "^7.2.3",
       "react-router-dom": "^5.2.0"
    },
    "devDependencies": {

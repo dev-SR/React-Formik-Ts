@@ -7,3 +7,8 @@ console.log(regex);
 
 const filtered = array.filter((e) => e.match(regex));
 console.log(filtered);
+
+const decrement = () => ({ type: 'INCREMENT' });
+
+const increment = (by) => ({ type: 'INCREMENT', payload: by });
+dispatch(increment());

@@ -3,80 +3,82 @@ import {
    BrowserRouter as Router,
    Route,
    Link,
-   useParams,
    useLocation,
    Switch
 } from 'react-router-dom';
 import Code, { appCode } from './syntaxHighligher/code';
+import {
+   configureStore,
+   createSlice,
+   Action,
+   PayloadAction
+} from '@reduxjs/toolkit';
+import { Provider, useDispatch, useSelector } from 'react-redux';
 
-type Country = {
-   name: string;
+export const counterSlice = createSlice({
+   name: 'counter',
+   initialState: {
+      value: 0
+   },
+   reducers: {
+      increment: (state, { payload }: PayloadAction<number>) => {
+         state.value += payload;
+      },
+      decrement: (state) => {
+         state.value -= 1;
+      },
+      incrementByAmount: (state, action) => {
+         state.value += action.payload;
+      }
+   }
+});
+
+// Action creators are generated for each case reducer function
+export const { increment, decrement, incrementByAmount } = counterSlice.actions;
+//Generate Reducer
+const counterReducer = counterSlice.reducer;
+
+const store = configureStore({
+   reducer: {
+      counter: counterReducer
+   }
+});
+import { ThunkAction } from 'redux-thunk';
+
+type RootState = ReturnType<typeof store.getState>;
+type AppThunk = ThunkAction<void, RootState, unknown, Action>;
+type AppDispatch = typeof store.dispatch;
+//or
+const useAppDispatch = () => useDispatch<AppDispatch>(); // Export a hook that can be reused to resolve types
+const authSelector = (state: RootState) => state.counter.value;
+const login = (): AppThunk => async (dispatch) => {
+   try {
+      dispatch(increment(2));
+      //   const currentUser = getCurrentUserFromAPI('https://auth-end-point.com/login')
+      //   dispatch(setAuthSuccess(currentUser))
+   } catch (error) {
+      //   dispatch(setAuthFailed(error))
+   } finally {
+      //   dispatch(setLoading(false))
+   }
 };
-type CountryList = Country[];
-
 const FilterCom = () => {
-   const [input, setInput] = useState('');
-   // 2 different state is mandatory:One for original  data and one for filtered
-   // data so that we won't modify actual data after each filtration
-   const [countryListDefault, setCountryListDefault] = useState<CountryList>();
-   const [
-      countryListFiltered,
-      setCountryListFiltered
-   ] = useState<CountryList>();
-
-   const updateInput = async (input: string) => {
-      // filter original
-      const filtered = countryListDefault?.filter((country) => {
-         if (input === '')
-            //filter((n) => n.includes('')); if arg is an empty string  -> returns all
-            return country.name.toLowerCase().includes(input.toLowerCase());
-         //or, return country.name.toLowerCase().match(new RegExp(''));// /(?:)/
-         else {
-            var regex = new RegExp(`${input.toLowerCase()}`); //if in-> a , out-> /a/
-            return country.name.toLowerCase().match(regex);
-         }
-      });
-      setInput(input);
-      // set filtered data to Filter Sate
-      setCountryListFiltered(filtered);
-   };
-
-   const fetchData = async () => {
-      return await fetch('https://restcountries.eu/rest/v2/all')
-         .then((response) => response.json())
-         .then((data) => {
-            setCountryListFiltered(data);
-            setCountryListDefault(data);
-         });
-   };
-   useEffect(() => {
-      fetchData();
-   }, []);
-
+   const count = useSelector(authSelector);
+   const dispatch = useAppDispatch();
    return (
-      <div className='w-full overflow-y-auto flex justify-center'>
-         <div className='w-1/2 '>
-            <div className='mt-10'>
-               <input
-                  value={input}
-                  placeholder='search country'
-                  className='border-yellow-400 border-2 rounded-lg w-full focus:border-yellow-500 bg-gray-800 focus:outline-none px-2 py-2 text-gray-100 placeholder-gray-500 flex'
-                  autoComplete='off'
-                  onChange={(e) => updateInput(e.target.value)}
-               />
-            </div>
-            <div className='mt-10 '>
-               {countryListFiltered?.map((data, index) => {
-                  if (data) {
-                     return (
-                        <div key={data.name}>
-                           <h1>{data.name}</h1>
-                        </div>
-                     );
-                  }
-                  return null;
-               })}
-            </div>
+      <div className='w-full overflow-y-auto flex justify-center items-center'>
+         <div className='w-1/2'>
+            <button
+               className='p-2 bg-gray-200 text-gray-700 m-10 focus:outline-none rounded'
+               onClick={() => dispatch(increment(2))}>
+               Increment
+            </button>
+            <span>{count}</span>
+            <button
+               className='p-2 bg-gray-200 text-gray-700 m-10 focus:outline-none rounded'
+               onClick={() => dispatch(decrement())}>
+               Decrement
+            </button>
          </div>
       </div>
    );
@@ -111,31 +113,32 @@ const Nav = () => {
 function App() {
    return (
       <div className='h-screen flex flex-col bg-gray-900 text-gray-300  items-center '>
-         <Router>
-            <Nav />
-            <Switch>
+         <Provider store={store}>
+            <Router>
+               <Nav />
                <div className='w-full flex-1 overflow-y-hidden flex flex-col'>
-                  <Route path='/code' exact>
-                     <div className='w-full overflow-y-auto flex justify-center'>
-                        <div className='w-11/12 '>
-                           <Code code={appCode} language='javascript' />
+                  <Switch>
+                     <Route path='/code' exact>
+                        <div className='w-full overflow-y-auto flex justify-center'>
+                           <div className='w-11/12 '>
+                              <Code code={appCode} language='javascript' />
+                           </div>
                         </div>
-                     </div>
-                  </Route>
-                  <Route path='/' exact>
-                     <FilterCom />
-                  </Route>
-
-                  <Route path='*' exact>
-                     {() => (
-                        <div className='h-full flex justify-center items-center'>
-                           <h2 className=' text-gray-50'>PAGE NOT FOUND</h2>
-                        </div>
-                     )}
-                  </Route>
+                     </Route>
+                     <Route path='/' exact>
+                        <FilterCom />
+                     </Route>
+                     <Route path='*' exact>
+                        {() => (
+                           <div className='h-full flex justify-center items-center'>
+                              <h2 className=' text-gray-50'>PAGE NOT FOUND</h2>
+                           </div>
+                        )}
+                     </Route>
+                  </Switch>
                </div>
-            </Switch>
-         </Router>
+            </Router>
+         </Provider>
       </div>
    );
 }
