@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { FC, useEffect, useRef, useState } from 'react';
 import {
    BrowserRouter as Router,
    Route,
@@ -8,260 +8,271 @@ import {
 } from 'react-router-dom';
 import Code, { appCode } from './syntaxHighligher/code';
 import {
-   configureStore,
-   createSlice,
-   createAsyncThunk
-} from '@reduxjs/toolkit';
-import {
-   Provider,
-   TypedUseSelectorHook,
-   useDispatch,
-   useSelector
-} from 'react-redux';
-export type TodoId = string;
-
-export type Todo = {
-   id: TodoId;
-   title: string;
-   completed: boolean;
+   Formik,
+   Field,
+   Form,
+   FormikHelpers,
+   useField,
+   FieldAttributes
+} from 'formik';
+import * as Yup from 'yup';
+interface Values {
+   name: string;
+   email: string;
+   single_checkbox: boolean;
+   group_checkbox: string[];
+   select: string;
+   radio: string;
+}
+const initialValues: Values = {
+   name: '',
+   email: '',
+   single_checkbox: false,
+   group_checkbox: [],
+   radio: '',
+   select: ''
+};
+const submitHandler = (
+   values: Values,
+   { setSubmitting, resetForm }: FormikHelpers<Values>
+) => {
+   setTimeout(() => {
+      alert(JSON.stringify(values, null, 2));
+      resetForm();
+      setSubmitting(false);
+   }, 300);
 };
 
-type TodosState = {
-   // In `status` we will watch
-   // if todos are being loaded.
-   status: 'loading' | 'idle';
-
-   // `error` will contain an error message.
-   error: string | null;
-   list: Todo[];
-};
-
-const initialState = {
-   list: [],
-   error: null,
-   status: 'idle'
-} as TodosState;
-
-/**
- * 
-
-*/
-
-// `createAsyncThunk` is a generic function.
-// We can use the first type-parameter
-// to tell what type will be returned as a result.
-export const fetchTodos = createAsyncThunk<
-   Todo[],
-   number,
-   { rejectValue: FetchTodosError }
->(
-   'todos/fetch',
-
-   // The second argument, `thunkApi`, is an object
-   // that contains all those fields
-   // and the `rejectWithValue` function:
-   async (limit: number, thunkApi) => {
-      const response = await fetch(
-         `https://jsonplaceholder.typicode.com/todos?limit=${limit}`
-      );
-
-      //Handling Thunk Errors#
-      // Check if status is not okay:
-      if (response.status !== 200) {
-         // Return the error message:
-         return thunkApi.rejectWithValue({
-            message: 'Failed to fetch todos.'
-         });
-      }
-      const data: Todo[] = await response.json();
-      return data;
-   }
-);
-// This type describes the error object structure:
-type FetchTodosError = {
-   message: string;
-};
-export const todosSlice = createSlice({
-   name: 'todos',
-   initialState,
-   reducers: {
-      // ...
-   },
-
-   // In `extraReducers` we declare
-   // all the actions:
-   extraReducers: (builder) => {
-      // When we send a request,
-      // `fetchTodos.pending` is being fired:
-      //type():"todos/fetch/pending"
-      builder.addCase(fetchTodos.pending, (state) => {
-         // At that moment,
-         // we change status to `loading`
-         // and clear all the previous errors:
-         state.status = 'loading';
-         state.error = null;
-      });
-
-      // When a server responses with the data,
-      // `fetchTodos.fulfilled` is fired:
-      //type():"todos/fetch/fulfilled"
-
-      builder.addCase(fetchTodos.fulfilled, (state, { payload }) => {
-         // We add all the new todos into the state
-         // and change `status` back to `idle`:
-         state.list.push(...payload);
-         state.status = 'idle';
-      });
-
-      // When a server responses with an error:
-      //type():"todos/fetch/rejected"
-      builder.addCase(fetchTodos.rejected, (state, { payload }) => {
-         // We show the error message
-         // and change `status` back to `idle` again.
-         if (payload) state.error = payload.message;
-         state.status = 'idle';
-      });
-   }
+const validator = Yup.object({
+   name: Yup.string().min(3, 'Must be at least 3 char').required('Required'),
+   email: Yup.string().email('Invalid email address').required('Required'),
+   single_checkbox: Yup.boolean()
+      .oneOf([true], 'You must accept')
+      .required('Required'),
+   select: Yup.string().oneOf(['red', 'green', 'blue']).required('Required'),
+   group_checkbox: Yup.array()
+      .min(1, "You can't leave this blank.")
+      .required("You can't leave this blank.")
+      .nullable(),
+   radio: Yup.string()
+      .oneOf(['student', 'teacher'], 'You must accept')
+      .required('Required')
 });
 
-/**
- * fetchTodos, the thunk action creator that kicks off the async payload callback you wrote
-fetchTodos.pending, an action creator that dispatches an 'todos/fetch/pending' action
-fetchTodos.fulfilled, an action creator that dispatches an 'todos/fetch/fulfilled' action
-fetchTodos.rejected, an action creator that dispatches an 'todos/fetch/rejected' action
-*/
+type MyTextInputProps = {
+   label?: string;
+} & FieldAttributes<{}>;
 
-export const todosReducer = todosSlice.reducer;
-
-// Use `configureStore` function to create the store:
-export const store = configureStore({
-   reducer: {
-      // Specify our reducer in the reducers object:
-      todos: todosReducer
-   }
-});
-
-// Define the `RootState` as the return type:
-export type RootState = ReturnType<typeof store.getState>;
-export const selectStatus = (state: RootState) => state.todos.status;
-export const selectTodo = (state: RootState) => state.todos.list;
-export const selectError = (state: RootState) => state.todos.error;
-export const useTypedSelector: TypedUseSelectorHook<RootState> = useSelector;
-
-export const LoadTodos = () => {
-   const dispatch = useDispatch();
-
-   const status = useTypedSelector(selectStatus);
-   const todos = useTypedSelector(selectTodo);
-   const error = useTypedSelector(selectError);
-
-   // When clicked, dispatch `fetchTodos`:
-   const handleClick = () => dispatch(fetchTodos(10));
-
+const MyTextInput: React.FC<MyTextInputProps> = ({ label, ...props }) => {
+   // Props -> GenericFieldHTMLAttributes & FieldConfig<T>
+   const [field, meta] = useField(props);
+   // useField('firstName')=>returns all
+   // the data for fistName fields
    return (
-      // Change the button text
-      // depending on the current `status`:
-      <div>
-         <button type='button' onClick={handleClick}>
-            {status === 'loading' ? 'Loading todos...' : 'Load todos'}
-         </button>
-
-         {todos && todos.map((n) => <h1>{n.title}</h1>)}
-         {error && <h1>{error}</h1>}
-      </div>
+      <>
+         {label && (
+            <label
+               className='text-yellow-100 text-xs'
+               htmlFor={props.id || props.name}>
+               {label}
+            </label>
+         )}
+         <Field
+            {...field}
+            {...props}
+            className='px-2 py-1 focus:outline-none'
+         />
+         {meta.touched && meta.error && (
+            <div className='text-red-400 text-xs'>{meta.error}</div>
+         )}
+      </>
    );
 };
 
-// export const AddTodo = () => {
-//    const [title, setTitle] = useState('');
-//    const dispatch = useAppDispatch();
+const MySelect: React.FC<MyTextInputProps> = ({ label, ...props }) => {
+   const [field, meta] = useField(props);
+   return (
+      <>
+         {label && (
+            <label
+               className='text-yellow-100 text-xs'
+               htmlFor={props.id || props.name}>
+               {label}
+            </label>
+         )}
+         <Field
+            as='select'
+            {...field}
+            {...props}
+            className='px-2 py-1 focus:outline-none'
+         />
+         {meta.touched && meta.error && (
+            <div className='text-red-400 text-xs'>{meta.error}</div>
+         )}
+      </>
+   );
+};
+const SingleCheckBox: FC<FieldAttributes<{}>> = ({ children, ...props }) => {
+   const [field, meta] = useField(props);
+   console.log(field);
+   return (
+      <>
+         {
+            <label className='text-yellow-100 text-xs flex items-center space-x-2'>
+               <Field
+                  type='checkbox'
+                  {...field}
+                  {...props}
+                  checked={field.value}
+               />
+               <div className='text-gray-100'>{children}</div>
+            </label>
+         }
+         {meta.touched && meta.error && (
+            <div className='text-red-400 text-xs'>{meta.error}</div>
+         )}
+      </>
+   );
+};
 
-//    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-//       e.preventDefault();
-//       setTitle('');
+const GroupCheckBox: FC<FieldAttributes<{}>> = ({ children, ...props }) => {
+   const [field, meta] = useField(props);
+   console.log(field);
+   return (
+      <>
+         {
+            <label className='text-yellow-100 text-xs flex items-center space-x-2'>
+               <Field type='checkbox' {...field} {...props} />
+               <div className='text-gray-100'>{children}</div>
+            </label>
+         }
+         {meta.touched && meta.error && (
+            <div className='text-red-400 text-xs'>{meta.error}</div>
+         )}
+      </>
+   );
+};
 
-//       dispatch(
-//          addTodo({
-//             id: Date.now().toString(),
-//             completed: false,
-//             title
-//          })
-//       );
-//    };
+const RadioBox: FC<FieldAttributes<{}>> = ({ children, ...props }) => {
+   const [field, meta] = useField(props);
+   return (
+      <>
+         {
+            <label className='text-yellow-100 text-xs flex items-center space-x-2'>
+               <Field type='radio' {...field} {...props} />
+               <div className='text-gray-100'>{children}</div>
+            </label>
+         }
+         {meta.touched && meta.error && (
+            <div className='text-red-400 text-xs'>{meta.error}</div>
+         )}
+      </>
+   );
+};
+const Basic: React.FC<{}> = () => (
+   <Formik
+      initialValues={initialValues}
+      onSubmit={submitHandler}
+      validationSchema={validator}>
+      {({ isSubmitting, values, errors }) => (
+         <div className='flex w-1/2 flex-col text-black'>
+            <Form className='flex w-1/2 flex-col space-y-1' autoComplete='off'>
+               <MyTextInput
+                  name='name'
+                  label='Name'
+                  type='text'
+                  placeholder='Frank'
+                  id='name'
+               />
+               <MyTextInput
+                  name='email'
+                  label='Email'
+                  type='email'
+                  placeholder='frack@gmail.com'
+               />
+               <MySelect label='Select' name='select'>
+                  <option value=''>select fav colors</option>
+                  <option value='red'>red</option>
+                  <option value='green'>green</option>
+                  <option value='blue'>blue</option>
+               </MySelect>
+               <SingleCheckBox name='single_checkbox'>I agree</SingleCheckBox>
+               <div className='text-yellow-100'>Group CheckBok:</div>
+               <div role='group'>
+                  <GroupCheckBox name='group_checkbox' value='facebook'>
+                     Facebook
+                  </GroupCheckBox>
+                  <GroupCheckBox name='group_checkbox' value='youtube'>
+                     Youtube
+                  </GroupCheckBox>
+                  <GroupCheckBox name='group_checkbox' value='insta'>
+                     Instagram
+                  </GroupCheckBox>
+               </div>
 
-//    return (
-//       <form onSubmit={handleSubmit} className='flex flex-col space-y-4 '>
-//          <input
-//             type='text'
-//             name='todoName'
-//             className='text-black px-2 py-1 focus:outline-none'
-//             value={title}
-//             onChange={(e) => setTitle(e.target.value)}
-//          />
-//          <button className='focus:outline-none bg-yellow-400 text-black py-2 rounded'>
-//             Add Todo
-//          </button>
-//       </form>
-//    );
-// };
+               <div role='group'>
+                  <div className='text-yellow-100'>Radio</div>
+                  <RadioBox name='radio' value='student'>
+                     Student
+                  </RadioBox>
+                  <RadioBox name='radio' value='teacher'>
+                     Teacher
+                  </RadioBox>
+               </div>
 
-// export const TodoList = () => {
-//    const dispatch = useAppDispatch();
-//    // Now, use the selector inside right away,
-//    // no need to destructure the result:
-//    const todos = useTypedSelector(selectTodos);
+               <button
+                  type='submit'
+                  className='bg-yellow-500 py-1 rounded w-full text-white focus:outline-none disabled:opacity-50'
+                  disabled={
+                     isSubmitting || errors.name
+                        ? true
+                        : false || errors.email
+                        ? true
+                        : false
+                  }>
+                  {isSubmitting ? 'Loading...' : 'Submit'}
+               </button>
 
-//    // The rest of the code stays the same:
-//    return (
-//       <ul>
-//          {todos.map((todo) => (
-//             <li key={todo.id} className='flex items-center space-x-2'>
-//                <input
-//                   type='checkbox'
-//                   checked={todo.completed}
-//                   className='bg-gray-600'
-//                   onChange={() => dispatch(toggleTodo(todo.id))}
-//                />
-//                <span>{todo.title}</span>
-//             </li>
-//          ))}
-//       </ul>
-//    );
-// };
+               <pre className='font-mono text-gray-200'>
+                  {JSON.stringify(values, null, 2)}
+               </pre>
+            </Form>
+         </div>
+      )}
+   </Formik>
+);
 
 function App() {
    return (
       <div className='h-screen flex flex-col bg-gray-900 text-gray-300  items-center '>
-         <Provider store={store}>
-            <Router>
-               <Nav />
-               <div className='w-full flex-1 overflow-y-hidden flex flex-col'>
-                  <Switch>
-                     <Route path='/code' exact>
-                        <div className='w-full overflow-y-auto flex justify-center'>
-                           <div className='w-11/12 '>
-                              <Code code={appCode} language='javascript' />
-                           </div>
+         <Router>
+            <Nav />
+            <div className='w-full flex-1 overflow-y-hidden flex flex-col'>
+               <Switch>
+                  <Route path='/code' exact>
+                     <div className='w-full overflow-y-auto flex justify-center'>
+                        <div className='w-11/12 '>
+                           <Code code={appCode} language='javascript' />
                         </div>
-                     </Route>
-                     <Route path='/' exact>
-                        <div className='flex h-full w-full justify-center items-center flex-col'>
-                           {/* <TodoList /> */}
-                           <LoadTodos />
+                     </div>
+                  </Route>
+                  <Route path='/' exact>
+                     <div className='flex h-full w-full justify-center items-center flex-col'>
+                        {/* <TodoList /> */}
+                        <Basic />
+                     </div>
+                  </Route>
+                  <Route path='/todo' exact></Route>
+                  <Route path='*' exact>
+                     {() => (
+                        <div className='h-full flex justify-center items-center'>
+                           <h2 className=' text-gray-50'>PAGE NOT FOUND</h2>
                         </div>
-                     </Route>
-                     <Route path='/todo' exact></Route>
-                     <Route path='*' exact>
-                        {() => (
-                           <div className='h-full flex justify-center items-center'>
-                              <h2 className=' text-gray-50'>PAGE NOT FOUND</h2>
-                           </div>
-                        )}
-                     </Route>
-                  </Switch>
-               </div>
-            </Router>
-         </Provider>
+                     )}
+                  </Route>
+               </Switch>
+            </div>
+         </Router>
       </div>
    );
 }
@@ -269,7 +280,7 @@ const Nav = () => {
    const l = useLocation();
 
    return (
-      <div className='flex w-full h-16 bg-gray-800 justify-center items-center'>
+      <div className='flex w-full h-10 bg-gray-800 justify-center items-center'>
          <div className='flex ml-10 space-x-4'>
             <Link
                to='/code'
