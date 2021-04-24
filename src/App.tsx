@@ -94,7 +94,7 @@ const MyTextInput: React.FC<MyTextInputProps> = ({ label, ...props }) => {
 const MySelect: React.FC<MyTextInputProps> = ({ label, ...props }) => {
    const [field, meta] = useField(props);
    return (
-      <>
+      <div className='text-black w-full flex flex-col'>
          {label && (
             <label
                className='text-yellow-100 text-xs'
@@ -111,7 +111,7 @@ const MySelect: React.FC<MyTextInputProps> = ({ label, ...props }) => {
          {meta.touched && meta.error && (
             <div className='text-red-400 text-xs'>{meta.error}</div>
          )}
-      </>
+      </div>
    );
 };
 const SingleCheckBox: FC<FieldAttributes<{}>> = ({ children, ...props }) => {
@@ -261,8 +261,11 @@ const ReInitialize: FC<{}> = () => {
    return (
       <Formik enableReinitialize initialValues={input} onSubmit={submitHandler}>
          {(props) => (
-            <Form className='text-black'>
-               <MyTextInput name='title' label='Reinitialize' />
+            <Form className='text-black w-1/3'>
+               <MyTextInput
+                  name='title'
+                  label='Populated from https://jsonplaceholder.typicode.com using "enableReinitialize" props'
+               />
                <pre className='font-mono text-gray-200'>
                   {JSON.stringify({ title: props.values.title }, null, 2)}
                </pre>
