@@ -5,19 +5,7 @@ import 'prismjs/themes/prism-tomorrow.css';
 export const appCode = `
 import React, { FC, useEffect, useRef, useState } from 'react';
 import {
-   BrowserRouter as Router,
-   Route,
-   Link,
-   useLocation,
-   Switch
-} from 'react-router-dom';
-import {
-   Formik,
-   Field,
-   Form,
-   FormikHelpers,
-   useField,
-   FieldAttributes
+   Formik, Field,Form,FormikHelpers, useField, FieldAttributes,  useFormikContext
 } from 'formik';
 import * as Yup from 'yup';
 interface Values {
@@ -55,7 +43,9 @@ const validator = Yup.object({
    single_checkbox: Yup.boolean()
       .oneOf([true], 'You must accept')
       .required('Required'),
-   select: Yup.string().oneOf(['red', 'green', 'blue']).required('Required'),
+   select: Yup.string()
+      .oneOf(['red', 'green', 'blue', 'todo', 'posts'])
+      .required('Required'),
    group_checkbox: Yup.array()
       .min(1, "You can't leave this blank.")
       .required("You can't leave this blank.")
@@ -98,7 +88,7 @@ const MyTextInput: React.FC<MyTextInputProps> = ({ label, ...props }) => {
 const MySelect: React.FC<MyTextInputProps> = ({ label, ...props }) => {
    const [field, meta] = useField(props);
    return (
-      <>
+      <div className='text-black w-full flex flex-col'>
          {label && (
             <label
                className='text-yellow-100 text-xs'
@@ -115,12 +105,12 @@ const MySelect: React.FC<MyTextInputProps> = ({ label, ...props }) => {
          {meta.touched && meta.error && (
             <div className='text-red-400 text-xs'>{meta.error}</div>
          )}
-      </>
+      </div>
    );
 };
 const SingleCheckBox: FC<FieldAttributes<{}>> = ({ children, ...props }) => {
    const [field, meta] = useField(props);
-   console.log(field);
+   // console.log(field);
    return (
       <>
          {
@@ -143,7 +133,7 @@ const SingleCheckBox: FC<FieldAttributes<{}>> = ({ children, ...props }) => {
 
 const GroupCheckBox: FC<FieldAttributes<{}>> = ({ children, ...props }) => {
    const [field, meta] = useField(props);
-   console.log(field);
+   // console.log(field);
    return (
       <>
          {
@@ -255,7 +245,7 @@ const ReInitialize: FC<{}> = () => {
       fetch('https://jsonplaceholder.typicode.com/todos/1')
          .then((response) => response.json())
          .then((json) => {
-            console.log(json);
+            // console.log(json);
             setInput({
                ...input,
                title: json.title
@@ -265,8 +255,11 @@ const ReInitialize: FC<{}> = () => {
    return (
       <Formik enableReinitialize initialValues={input} onSubmit={submitHandler}>
          {(props) => (
-            <Form className='text-black'>
-               <MyTextInput name='title' label='Reinitialize' />
+            <Form className='text-black w-1/3'>
+               <MyTextInput
+                  name='title'
+                  label='Populated from https://jsonplaceholder.typicode.com using "enableReinitialize" props'
+               />
                <pre className='font-mono text-gray-200'>
                   {JSON.stringify({ title: props.values.title }, null, 2)}
                </pre>
@@ -276,9 +269,101 @@ const ReInitialize: FC<{}> = () => {
    );
 };
 
+//useFormikContext()
 
-;
+/**
+ * A custom React Hook that returns Formik states and helpers via React Context. Thus, this hook will only work if there is a parent Formik React Context from which it can pull from.
+ * * If called without a parent context (i.e. a descendent of a <Formik> component or withFormik higher-order component), you will get a warning in your console.
 
+*/
+const InnerForm = () => {
+   const { values, handleChange } = useFormikContext<Values>();
+   const [fetchState, setFetchState] = useState();
+   // React.useEffect(() => {
+   //    console.log(values);
+   // }, [values]);
+
+   const MyhandleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      let op = e.target.value;
+      switch (op) {
+         case 'todo':
+            fetch('https://jsonplaceholder.typicode.com/todos/1')
+               .then((response) => response.json())
+               .then((json) => {
+                  setFetchState(json);
+               });
+         case 'posts':
+            fetch('https://jsonplaceholder.typicode.com/posts/1')
+               .then((response) => response.json())
+               .then((json) => {
+                  setFetchState(json);
+               });
+      }
+      //Update Selected Value
+      handleChange(e);
+   };
+   return (
+      <div>
+         <MySelect
+            id='select'
+            name='select'
+            // value={values}
+            onChange={MyhandleChange}>
+            <option value=''>Select</option>
+            <option value='todo'>FETCH TODO</option>
+            <option value='posts'>FETCH POSTS</option>
+         </MySelect>
+         <pre>{JSON.stringify(values.select, null, 2)}</pre>
+
+         <div className=' overflow-x-auto'>
+            <pre>{JSON.stringify(fetchState, null, 2)}</pre>
+         </div>
+      </div>
+   );
+};
+
+const UseFormikContext = () => (
+   <Formik
+      initialValues={initialValues}
+      onSubmit={submitHandler}
+      validationSchema={validator}>
+      <Form className='w-1/3 flex flex-col overflow-x-hidden'>
+         <InnerForm />
+      </Form>
+   </Formik>
+);
+
+function App() {
+   return (
+      <Router>
+         <div className='w-full flex bg-gray-900 text-gray-300 h-full  items-center flex-col'>
+            <Nav />
+            <Switch>
+               <Route path='/code' exact>
+                  <div className='w-full overflow-y-auto flex justify-center'>
+                     <div className='w-11/12 '>
+                        <Code code={appCode} language='javascript' />
+                     </div>
+                  </div>
+               </Route>
+               <Route path='/' exact>
+                  <UseFormikContext />
+                  <ReInitialize />
+                  <Basic />
+               </Route>
+               <Route path='/todo' exact></Route>
+               <Route path='*' exact>
+                  {() => (
+                     <div className='h-full flex justify-center items-center'>
+                        <h2 className=' text-gray-50'>PAGE NOT FOUND</h2>
+                     </div>
+                  )}
+               </Route>
+            </Switch>
+         </div>
+      </Router>
+   );
+}
 `;
 export default function Code({
    code,
@@ -291,7 +376,7 @@ export default function Code({
       Prism.highlightAll();
    }, []);
    return (
-      <div className='w-full'>
+      <div className='w-full overflow-x-auto'>
          <pre className=' rounded-xl'>
             <code className={`language-${language} `}>{code}</code>
          </pre>
