@@ -23,6 +23,7 @@ interface Values {
    group_checkbox: string[];
    select: string;
    radio: string;
+   title: '';
 }
 const initialValues: Values = {
    name: '',
@@ -30,7 +31,8 @@ const initialValues: Values = {
    single_checkbox: false,
    group_checkbox: [],
    radio: '',
-   select: ''
+   select: '',
+   title: ''
 };
 const submitHandler = (
    values: Values,
@@ -80,7 +82,7 @@ const MyTextInput: React.FC<MyTextInputProps> = ({ label, ...props }) => {
          <Field
             {...field}
             {...props}
-            className='px-2 py-1 focus:outline-none'
+            className='px-2 py-1 focus:outline-none w-full'
          />
          {meta.touched && meta.error && (
             <div className='text-red-400 text-xs'>{meta.error}</div>
@@ -169,14 +171,14 @@ const RadioBox: FC<FieldAttributes<{}>> = ({ children, ...props }) => {
       </>
    );
 };
-const Basic: React.FC<{}> = () => (
-   <Formik
-      initialValues={initialValues}
-      onSubmit={submitHandler}
-      validationSchema={validator}>
-      {({ isSubmitting, values, errors }) => (
-         <div className='flex w-1/2 flex-col text-black'>
-            <Form className='flex w-1/2 flex-col space-y-1' autoComplete='off'>
+const Basic: React.FC<{}> = () => {
+   return (
+      <Formik
+         initialValues={initialValues}
+         onSubmit={submitHandler}
+         validationSchema={validator}>
+         {({ isSubmitting, values, errors }) => (
+            <Form className='flex w-1/3 flex-col space-y-1 ' autoComplete='off'>
                <MyTextInput
                   name='name'
                   label='Name'
@@ -232,55 +234,79 @@ const Basic: React.FC<{}> = () => (
                   }>
                   {isSubmitting ? 'Loading...' : 'Submit'}
                </button>
-
                <pre className='font-mono text-gray-200'>
                   {JSON.stringify(values, null, 2)}
                </pre>
             </Form>
-         </div>
-      )}
-   </Formik>
-);
+         )}
+      </Formik>
+   );
+};
+
+//enableReinitialize ==TRUE
+
+const ReInitialize: FC<{}> = () => {
+   const [input, setInput] = useState(initialValues);
+   useEffect(() => {
+      fetch('https://jsonplaceholder.typicode.com/todos/1')
+         .then((response) => response.json())
+         .then((json) => {
+            console.log(json);
+            setInput({
+               ...input,
+               title: json.title
+            });
+         });
+   }, []);
+   return (
+      <Formik enableReinitialize initialValues={input} onSubmit={submitHandler}>
+         {(props) => (
+            <Form className='text-black'>
+               <MyTextInput name='title' label='Reinitialize' />
+               <pre className='font-mono text-gray-200'>
+                  {JSON.stringify({ title: props.values.title }, null, 2)}
+               </pre>
+            </Form>
+         )}
+      </Formik>
+   );
+};
 
 function App() {
    return (
-      <div className='h-screen flex flex-col bg-gray-900 text-gray-300  items-center '>
-         <Router>
+      <Router>
+         <div className='w-full flex bg-gray-900 text-gray-300 h-full  items-center flex-col'>
             <Nav />
-            <div className='w-full flex-1 overflow-y-hidden flex flex-col'>
-               <Switch>
-                  <Route path='/code' exact>
-                     <div className='w-full overflow-y-auto flex justify-center'>
-                        <div className='w-11/12 '>
-                           <Code code={appCode} language='javascript' />
-                        </div>
+            <Switch>
+               <Route path='/code' exact>
+                  <div className='w-full overflow-y-auto flex justify-center'>
+                     <div className='w-11/12 '>
+                        <Code code={appCode} language='javascript' />
                      </div>
-                  </Route>
-                  <Route path='/' exact>
-                     <div className='flex h-full w-full justify-center items-center flex-col'>
-                        {/* <TodoList /> */}
-                        <Basic />
+                  </div>
+               </Route>
+               <Route path='/' exact>
+                  <ReInitialize />
+                  <Basic />
+               </Route>
+               <Route path='/todo' exact></Route>
+               <Route path='*' exact>
+                  {() => (
+                     <div className='h-full flex justify-center items-center'>
+                        <h2 className=' text-gray-50'>PAGE NOT FOUND</h2>
                      </div>
-                  </Route>
-                  <Route path='/todo' exact></Route>
-                  <Route path='*' exact>
-                     {() => (
-                        <div className='h-full flex justify-center items-center'>
-                           <h2 className=' text-gray-50'>PAGE NOT FOUND</h2>
-                        </div>
-                     )}
-                  </Route>
-               </Switch>
-            </div>
-         </Router>
-      </div>
+                  )}
+               </Route>
+            </Switch>
+         </div>
+      </Router>
    );
 }
 const Nav = () => {
    const l = useLocation();
 
    return (
-      <div className='flex w-full h-10 bg-gray-800 justify-center items-center'>
+      <div className='flex w-full h-10 bg-gray-800 justify-center items-center mb-1'>
          <div className='flex ml-10 space-x-4'>
             <Link
                to='/code'
