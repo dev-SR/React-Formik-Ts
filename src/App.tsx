@@ -13,7 +13,8 @@ import {
    Form,
    FormikHelpers,
    useField,
-   FieldAttributes
+   FieldAttributes,
+   useFormikContext
 } from 'formik';
 import * as Yup from 'yup';
 interface Values {
@@ -51,7 +52,9 @@ const validator = Yup.object({
    single_checkbox: Yup.boolean()
       .oneOf([true], 'You must accept')
       .required('Required'),
-   select: Yup.string().oneOf(['red', 'green', 'blue']).required('Required'),
+   select: Yup.string()
+      .oneOf(['red', 'green', 'blue', 'todo', 'posts'])
+      .required('Required'),
    group_checkbox: Yup.array()
       .min(1, "You can't leave this blank.")
       .required("You can't leave this blank.")
@@ -116,7 +119,7 @@ const MySelect: React.FC<MyTextInputProps> = ({ label, ...props }) => {
 };
 const SingleCheckBox: FC<FieldAttributes<{}>> = ({ children, ...props }) => {
    const [field, meta] = useField(props);
-   console.log(field);
+   // console.log(field);
    return (
       <>
          {
@@ -139,7 +142,7 @@ const SingleCheckBox: FC<FieldAttributes<{}>> = ({ children, ...props }) => {
 
 const GroupCheckBox: FC<FieldAttributes<{}>> = ({ children, ...props }) => {
    const [field, meta] = useField(props);
-   console.log(field);
+   // console.log(field);
    return (
       <>
          {
@@ -251,7 +254,7 @@ const ReInitialize: FC<{}> = () => {
       fetch('https://jsonplaceholder.typicode.com/todos/1')
          .then((response) => response.json())
          .then((json) => {
-            console.log(json);
+            // console.log(json);
             setInput({
                ...input,
                title: json.title
@@ -275,6 +278,70 @@ const ReInitialize: FC<{}> = () => {
    );
 };
 
+//useFormikContext()
+
+/**
+ * A custom React Hook that returns Formik states and helpers via React Context. Thus, this hook will only work if there is a parent Formik React Context from which it can pull from.
+ * * If called without a parent context (i.e. a descendent of a <Formik> component or withFormik higher-order component), you will get a warning in your console.
+
+*/
+const InnerForm = () => {
+   const { values, handleChange } = useFormikContext<Values>();
+   const [fetchState, setFetchState] = useState();
+   // React.useEffect(() => {
+   //    console.log(values);
+   // }, [values]);
+
+   const MyhandleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      let op = e.target.value;
+      switch (op) {
+         case 'todo':
+            fetch('https://jsonplaceholder.typicode.com/todos/1')
+               .then((response) => response.json())
+               .then((json) => {
+                  setFetchState(json);
+               });
+         case 'posts':
+            fetch('https://jsonplaceholder.typicode.com/posts/1')
+               .then((response) => response.json())
+               .then((json) => {
+                  setFetchState(json);
+               });
+      }
+      //Update Selected Value
+      handleChange(e);
+   };
+   return (
+      <div>
+         <MySelect
+            id='select'
+            name='select'
+            // value={values}
+            onChange={MyhandleChange}>
+            <option value=''>Select</option>
+            <option value='todo'>FETCH TODO</option>
+            <option value='posts'>FETCH POSTS</option>
+         </MySelect>
+         <pre>{JSON.stringify(values.select, null, 2)}</pre>
+
+         <div className=' overflow-x-auto'>
+            <pre>{JSON.stringify(fetchState, null, 2)}</pre>
+         </div>
+      </div>
+   );
+};
+
+const UseFormikContext = () => (
+   <Formik
+      initialValues={initialValues}
+      onSubmit={submitHandler}
+      validationSchema={validator}>
+      <Form className='w-1/3 flex flex-col overflow-x-hidden'>
+         <InnerForm />
+      </Form>
+   </Formik>
+);
+
 function App() {
    return (
       <Router>
@@ -289,6 +356,7 @@ function App() {
                   </div>
                </Route>
                <Route path='/' exact>
+                  <UseFormikContext />
                   <ReInitialize />
                   <Basic />
                </Route>
